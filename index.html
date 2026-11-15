@@ -71,6 +71,7 @@ h1{font-size:2rem;font-weight:800;letter-spacing:-.03em}
 .seg{display:flex;flex-direction:column}
 .c{font-style:normal;font-weight:800;font-size:.95rem;color:#c4b5fd;padding-right:6px;min-height:1.2em}
 .t{white-space:pre-wrap;color:#e7e7ec}
+.tab-line{font-family:ui-monospace,Menlo,monospace;font-size:.8rem;color:#a1a1aa;white-space:pre;line-height:1.2;width:100%;display:block;margin:2px 0}
 .transport{background:var(--s1);border-top:1px solid var(--line);padding:12px 16px calc(14px + env(safe-area-inset-bottom))}
 .tin{max-width:520px;margin:0 auto}
 .spd{display:flex;align-items:center;gap:10px;font-size:.72rem;color:var(--mu);font-weight:600;margin-bottom:10px}
@@ -269,13 +270,24 @@ function transposeLyrics(t,n,f){return n===0?t:t.replace(/\[(.*?)\]/g,(_,c)=>CH.
 
 /* EXPRESIÓN REGULAR ESTRICTA PARA ACORDES REALES */
 const CH=/^[A-G][#b]?(?:maj|min|dim|aug|sus|add|m|M|[0-9]|\+|°|ø|-|b|#|\([^)]*\)|\/[A-G][#b]?)*$/;
-const isChordLine=l=>l.trim()!==''&&l.trim().split(/\s+/).every(x=>CH.test(x));
+
+const isTabLine=l=>{
+  const t=l.trim();
+  return /^[a-zA-Z]\|/.test(t) || t.includes('---') || t.includes('|-') || t.includes('|--');
+};
+
+const isChordLine=l=>!isTabLine(l)&&l.trim()!==''&&l.trim().split(/\s+/).every(x=>CH.test(x));
 
 function convertChordSheet(text){
   const L=text.replace(/\r/g,'').split('\n'),out=[];
   for(let i=0;i<L.length;i++){
     const l=L[i];
     const trimmed = l.trim();
+    
+    if(isTabLine(l)){
+      out.push(l);
+      continue;
+    }
     
     if(trimmed.startsWith('[') && trimmed.endsWith(']') && !isChordLine(trimmed.slice(1, -1))) {
       out.push(trimmed);
@@ -288,7 +300,7 @@ function convertChordSheet(text){
 
     if(isChordLine(l)){
       const n=L[i+1];
-      if(n!==undefined && n.trim()!=='' && !isChordLine(n) && !n.trim().startsWith('[')){
+      if(n!==undefined && n.trim()!=='' && !isChordLine(n) && !n.trim().startsWith('[') && !isTabLine(n)){
         let mapped = n;
         const ms=[...l.matchAll(/\S+/g)];
         for(let k=ms.length-1;k>=0;k--){
@@ -312,32 +324,23 @@ function convertChordSheet(text){
 }
 
 function detectKeyFromLyrics(lyrics) {
-  const matches = lyrics.match(/\[(.*?)\]/g);
+  const explicitKeyMatch = lyrics.match(/(?:tono|key)\s*:\s*([A-G][#b]?m?)/i);
+  if(explicitKeyMatch && KEYS.includes(explicitKeyMatch[1].trim())) {
+    return explicitKeyMatch[1].trim();
+  }
+
+  const converted = convertChordSheet(lyrics);
+  const matches = converted.match(/\[(.*?)\]/g);
   if(matches) {
     for(let m of matches) {
       const chord = m.replace(/[\[\]]/g, '').trim();
       if(CH.test(chord)) {
-        const isMinor = /m/.test(chord) && !/maj/.test(chord);
-        const rootMatch = chord.match(/^[A-G][#b]?/);
+        const rootPart = chord.split('/')[0];
+        const isMinor = /m/.test(rootPart) && !/maj/.test(rootPart);
+        const rootMatch = rootPart.match(/^[A-G][#b]?/);
         if(rootMatch) {
           let root = rootMatch[0];
           if(FLATS[root]) root = FLATS[root];
-          const candidate = root + (isMinor ? 'm' : '');
-          if(KEYS.includes(candidate)) return candidate;
-          return root;
-        }
-      }
-    }
-  }
-  const lines = lyrics.split('\n');
-  for(let l of lines) {
-    const tokens = l.trim().split(/\s+/);
-    for(let tok of tokens) {
-      if(CH.test(tok)) {
-        let root = tok.match(/^[A-G][#b]?/)?.[0];
-        if(root) {
-          if(FLATS[root]) root = FLATS[root];
-          const isMinor = /m/.test(tok) && !/maj/.test(tok);
           const candidate = root + (isMinor ? 'm' : '');
           if(KEYS.includes(candidate)) return candidate;
           return root;
@@ -350,6 +353,9 @@ function detectKeyFromLyrics(lyrics) {
 
 function renderLyrics(text){
   return text.split('\n').map(line=>{
+    if(isTabLine(line)) {
+      return `<div class="tab-line">${esc(line)}</div>`;
+    }
     const p=line.split(/\[(.*?)\]/);let out='';
     if(p[0])out+=`<span class="seg"><i class="c">&nbsp;</i><span class="t">${esc(p[0])}</span></span>`;
     for(let i=1;i<p.length;i+=2) {
@@ -505,14 +511,11 @@ function updateSongView(){
   const cb=$('cheat-notes-box');
   if(currentSong.cheat){$('cheat-text').textContent=currentSong.cheat;cb.classList.remove('hidden')}else cb.classList.add('hidden');
   
-  // SOLUCIÓN AL VUELO: Si la canción no tiene corchetes guardados, los formateamos automáticamente al abrirla
-  let rawLyrics = currentSong.lyrics;
-  if(!rawLyrics.includes('[')) {
-    rawLyrics = convertChordSheet(rawLyrics);
-  }
+  // CORRECCIÓN FORZADA AL VUELO: Siempre pasamos la letra por el conversor para garantizar corchetes interactivos
+  const formattedLyrics = convertChordSheet(currentSong.lyrics);
 
   const semitones = semitoneDistance(currentSong.key, playKey);
-  const transposed = transposeLyrics(rawLyrics, (semitones - capo + 12) % 12, capo ? false : useFlats(playKey));
+  const transposed = transposeLyrics(formattedLyrics, (semitones - capo + 12) % 12, capo ? false : useFlats(playKey));
   $('lyrics-container').innerHTML = renderLyrics(transposed);
   renderFretboard(playKey);
   askAIAssistant();
