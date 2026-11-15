@@ -1,0 +1,16 @@
+{
+  "name": "GigFlow - Músicos Pro",
+  "short_name": "GigFlow",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "description": "Aplicación profesional para músicos, letras, acordes y afinador en tiempo real.",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3019/3019764.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
