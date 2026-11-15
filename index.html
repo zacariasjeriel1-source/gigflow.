@@ -343,7 +343,6 @@ function moveSetlist(index, direction){
 }
 function renderSetlist(){
   const c=$('setlist-songs-list');
-  // Llenar selector maestro de tonos
   $('master-key-select').innerHTML='<option value="">-- Sin cambio global --</option>'+KEYS.map(k=>`<option value="${k}">${k}</option>`).join('');
 
   if(!setlist.length){
@@ -371,10 +370,9 @@ function applyMasterTranspose(targetKey){
   setlist.forEach(id=>{
     const s=songs.find(x=>x.id===id);
     if(s){
-      // Transponer todas al tono elegido manteniendo su modalidad (mayor/menor) o forzando el tono maestro
       const isMin = isMinorKey(targetKey);
       const rootT = keyRoot(targetKey);
-      s.playKey = rootT + (isMinor ? 'm' : '');
+      s.playKey = rootT + (isMin ? 'm' : '');
     }
   });
   persist();
@@ -406,7 +404,6 @@ function openSongFromSetlist(setlistIdx){
   loadSongPlayer(s);
 }
 function openSongFromLibrary(id){
-  // Si abrimos desde biblioteca, creamos un setlist temporal con ella o buscamos su índice si está en el setlist
   currentSetlistIndex=setlist.indexOf(id);
   const s=songs.find(x=>x.id===id);
   if(!s) return;
@@ -500,10 +497,11 @@ function renderCapo(){
 }
 function setCapo(c){capo=c;updateSongView()}
 
-/* Formateador de Cifras */
+/* Formateador de Cifras con Auto-detección */
 const CH=/^[A-G][#b]?(?:maj|min|dim|aug|sus|add|m|M|[0-9]|\+|°|ø|-|b|#|\([^)]*\)|\/[A-G][#b]?)*$/;
 const isChordLine=l=>l.trim()!==''&&l.trim().split(/\s+/).every(x=>CH.test(x));
 function convertChordSheet(text){
+  if(text.includes('[')) return text; // Si ya tiene corchetes, no tocar
   const L=text.replace(/\r/g,'').split('\n'),out=[];
   for(let i=0;i<L.length;i++){
     const l=L[i],sec=l.match(/^\s*\[([^\]]+)\]\s*:?\s*$/);
@@ -567,7 +565,7 @@ function startAutoScroll(){
 }
 function stopAutoScroll(){isScrolling=false;clearInterval(scrollInterval);scrollInterval=null;scrollAcc=0;const b=$('scroll-btn');if(b)b.innerHTML=IC_PLAY}
 
-/* Seguimiento Facial Corregido y Seguro */
+/* Seguimiento Facial */
 const MP_CAMERA='https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js';
 const MP_FACE='https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js';
 const MP_BASE='https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/';
@@ -656,8 +654,12 @@ function openModal(){
 }
 function closeModal(){$('song-modal').classList.add('hidden');editingId=null}
 function saveSong(){
-  const title=$('new-title').value.trim(),artist=$('new-artist').value.trim(),lyrics=$('new-lyrics').value,cheat=$('new-cheat').value.trim();
+  const title=$('new-title').value.trim(),artist=$('new-artist').value.trim(),cheat=$('new-cheat').value.trim();
+  let lyrics=$('new-lyrics').value;
   if(!title||!lyrics.trim()){alert('Escribe título y letra.');return}
+  
+  // Auto-formatear acordes con corchetes si no los tiene al guardar
+  lyrics = convertChordSheet(lyrics);
   const key = detectKeyFromLyrics(lyrics) || $('new-key').value;
 
   if(editingId!==null){
@@ -667,7 +669,7 @@ function saveSong(){
   }else{
     const newId=Date.now();
     songs.push({id:newId,title,artist,key,cheat,lyrics});
-    setlist.push(newId); // Añadir automáticamente al listado al crearla
+    setlist.push(newId);
   }
   
   persist();closeModal();
