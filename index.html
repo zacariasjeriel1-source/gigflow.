@@ -299,9 +299,20 @@ function convertChordSheet(text){
     }
 
     if(isChordLine(l)){
-      const n=L[i+1];
-      if(n!==undefined && n.trim()!=='' && !isChordLine(n) && !n.trim().startsWith('[') && !isTabLine(n)){
-        let mapped = n;
+      // Look ahead, ignorando líneas en blanco intermedias, para encontrar la letra
+      let targetIdx = -1;
+      for(let j = i + 1; j < L.length; j++) {
+        const candidate = L[j].trim();
+        if(candidate === '') continue; // Salta renglones vacíos
+        if(isChordLine(L[j]) || isTabLine(L[j]) || (candidate.startsWith('[') && candidate.endsWith(']'))) {
+          break;
+        }
+        targetIdx = j;
+        break;
+      }
+
+      if(targetIdx !== -1) {
+        let mapped = L[targetIdx];
         const ms=[...l.matchAll(/\S+/g)];
         for(let k=ms.length-1;k>=0;k--){
           const chordCandidate = ms[k][0];
@@ -312,13 +323,15 @@ function convertChordSheet(text){
           }
         }
         out.push(mapped.replace(/\s+$/,''));
-        i++;
-      }else{
+        i = targetIdx; // Salta hasta la línea de letra ya integrada
+      } else {
         out.push(trimmed.split(/\s+/).map(x=> CH.test(x) ? '['+x+']' : x).join(' '));
       }
       continue;
     }
-    out.push(l);
+    if(trimmed !== '') {
+      out.push(l);
+    }
   }
   return out.join('\n');
 }
@@ -511,7 +524,6 @@ function updateSongView(){
   const cb=$('cheat-notes-box');
   if(currentSong.cheat){$('cheat-text').textContent=currentSong.cheat;cb.classList.remove('hidden')}else cb.classList.add('hidden');
   
-  // SOLUCIÓN DEFINITIVA: Forzamos la conversión de acordes flotantes SIEMPRE al abrir la canción
   const formattedLyrics = convertChordSheet(currentSong.lyrics);
 
   const semitones = semitoneDistance(currentSong.key, playKey);
