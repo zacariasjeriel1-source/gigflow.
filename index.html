@@ -265,40 +265,46 @@ function semitoneDistance(a,b){
   const x=noteIdx(keyRoot(a)),y=noteIdx(keyRoot(b));
   return(x<0||y<0)?0:(y-x+12)%12;
 }
-function transposeLyrics(t,n,f){return n===0?t:t.replace(/\[(.*?)\]/g,(_,c)=>`[${transposeChord(c,n,f)}]`)}
+function transposeLyrics(t,n,f){return n===0?t:t.replace(/\[(.*?)\]/g,(_,c)=>CH.test(c)?`[${transposeChord(c,n,f)}]`:`[${c}]`)}
 
+/* EXPRESIÓN REGULAR ESTRICTA PARA ACORDES REALES */
 const CH=/^[A-G][#b]?(?:maj|min|dim|aug|sus|add|m|M|[0-9]|\+|°|ø|-|b|#|\([^)]*\)|\/[A-G][#b]?)*$/;
 const isChordLine=l=>l.trim()!==''&&l.trim().split(/\s+/).every(x=>CH.test(x));
 
 function convertChordSheet(text){
-  if(text.includes('[')) {
-    // Already contains brackets, but let's clean up section lines if needed
-    return text;
-  }
   const L=text.replace(/\r/g,'').split('\n'),out=[];
   for(let i=0;i<L.length;i++){
     const l=L[i];
     const trimmed = l.trim();
-    // Check if it's a section tag like [Intro] or Intro:
-    const sec=trimmed.match(/^\[?([A-Za-z0-9\s\-\(\)]+)\]?:?$/);
-    if(sec && !isChordLine(trimmed) && trimmed.length < 25 && trimmed.length > 0 && !/[a-z]{4,}/.test(trimmed)){
-      out.push(`[${sec[1].trim()}]`);
+    
+    // Detectar líneas de sección como [Intro], [Estribillo], etc.
+    if(trimmed.startsWith('[') && trimmed.endsWith(']') && !isChordLine(trimmed.slice(1, -1))) {
+      out.push(trimmed);
       continue;
     }
+    // Si viene sin corchetes pero es sección (ej: Intro:)
+    if(/^(Intro|Verso|Estribillo|Coro|Puente|Tab|Final|Solo)/i.test(trimmed) && !isChordLine(trimmed)) {
+      out.push(`[${trimmed.replace(':','')}]`);
+      continue;
+    }
+
     if(isChordLine(l)){
       const n=L[i+1];
       if(n!==undefined && n.trim()!=='' && !isChordLine(n) && !n.trim().startsWith('[')){
         let mapped = n;
         const ms=[...l.matchAll(/\S+/g)];
         for(let k=ms.length-1;k>=0;k--){
-          const p=ms[k].index;
-          if(mapped.length < p) mapped = mapped.padEnd(p, ' ');
-          mapped = mapped.slice(0, p) + '[' + ms[k][0] + ']' + mapped.slice(p);
+          const chordCandidate = ms[k][0];
+          if(CH.test(chordCandidate)) {
+            const p=ms[k].index;
+            if(mapped.length < p) mapped = mapped.padEnd(p, ' ');
+            mapped = mapped.slice(0, p) + '[' + chordCandidate + ']' + mapped.slice(p);
+          }
         }
         out.push(mapped.replace(/\s+$/,''));
         i++;
       }else{
-        out.push(trimmed.split(/\s+/).map(x=>'['+x+']').join(' '));
+        out.push(trimmed.split(/\s+/).map(x=> CH.test(x) ? '['+x+']' : x).join(' '));
       }
       continue;
     }
@@ -309,33 +315,38 @@ function convertChordSheet(text){
 
 function detectKeyFromLyrics(lyrics) {
   const matches = lyrics.match(/\[(.*?)\]/g);
-  if(!matches || matches.length === 0) {
-    // Check unbracketed lines
-    const lines = lyrics.split('\n');
-    for(let l of lines) {
-      if(isChordLine(l)) {
-        const first = l.trim().split(/\s+/)[0];
-        if(first) {
-          let root = first.match(/^[A-G][#b]?/)?.[0];
-          if(root) {
-            if(FLATS[root]) root = FLATS[root];
-            const isMinor = /m/.test(first) && !/maj/.test(first);
-            const candidate = root + (isMinor ? 'm' : '');
-            if(KEYS.includes(candidate)) return candidate;
-          }
+  if(matches) {
+    for(let m of matches) {
+      const chord = m.replace(/[\[\]]/g, '').trim();
+      if(CH.test(chord)) {
+        const isMinor = /m/.test(chord) && !/maj/.test(chord);
+        const rootMatch = chord.match(/^[A-G][#b]?/);
+        if(rootMatch) {
+          let root = rootMatch[0];
+          if(FLATS[root]) root = FLATS[root];
+          const candidate = root + (isMinor ? 'm' : '');
+          if(KEYS.includes(candidate)) return candidate;
+          return root;
         }
       }
     }
-    return 'C';
   }
-  const firstChord = matches[0].replace(/[\[\]]/g, '').trim();
-  const isMinor = /m/.test(firstChord) && !/maj/.test(firstChord);
-  const rootMatch = firstChord.match(/^[A-G][#b]?/);
-  if(rootMatch) {
-    let root = rootMatch[0];
-    if(FLATS[root]) root = FLATS[root];
-    const candidate = root + (isMinor ? 'm' : '');
-    if(KEYS.includes(candidate)) return candidate;
+  // Si no hay corchetes válidos, buscamos en líneas sueltas
+  const lines = lyrics.split('\n');
+  for(let l of lines) {
+    const tokens = l.trim().split(/\s+/);
+    for(let tok of tokens) {
+      if(CH.test(tok)) {
+        let root = tok.match(/^[A-G][#b]?/)?.[0];
+        if(root) {
+          if(FLATS[root]) root = FLATS[root];
+          const isMinor = /m/.test(tok) && !/maj/.test(tok);
+          const candidate = root + (isMinor ? 'm' : '');
+          if(KEYS.includes(candidate)) return candidate;
+          return root;
+        }
+      }
+    }
   }
   return 'C';
 }
@@ -344,7 +355,15 @@ function renderLyrics(text){
   return text.split('\n').map(line=>{
     const p=line.split(/\[(.*?)\]/);let out='';
     if(p[0])out+=`<span class="seg"><i class="c">&nbsp;</i><span class="t">${esc(p[0])}</span></span>`;
-    for(let i=1;i<p.length;i+=2)out+=`<span class="seg"><i class="c">${esc(p[i])}</i><span class="t">${esc(p[i+1]||'')||'&nbsp;'}</span></span>`;
+    for(let i=1;i<p.length;i+=2) {
+      const token = p[i];
+      if(CH.test(token)) {
+        out+=`<span class="seg"><i class="c">${esc(token)}</i><span class="t">${esc(p[i+1]||'')||'&nbsp;'}</span></span>`;
+      } else {
+        // Es una sección como [Intro] o [Estribillo], renderizar como título de sección
+        out+=`<div style="width:100%; color:var(--ac); font-weight:800; font-size:0.9rem; margin-top:10px; margin-bottom:4px;">[${esc(token)}]</div>`;
+      }
+    }
     return `<div class="ln">${out||'&nbsp;'}</div>`;
   }).join('');
 }
@@ -693,7 +712,6 @@ function saveSong(){
   let lyrics=$('new-lyrics').value;
   if(!title||!lyrics.trim()){alert('Escribe título y letra.');return}
   
-  // Auto-formatear acordes con corchetes si no los tiene
   lyrics = convertChordSheet(lyrics);
   const key = detectKeyFromLyrics(lyrics) || $('new-key').value;
 
