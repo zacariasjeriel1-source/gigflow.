@@ -169,7 +169,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   </div>
   <div class="keybar">
     <button onclick="shiftKey(-1)" aria-label="Bajar medio tono">−</button>
-    <div class="kv"><small>TONO</small><b id="key-label">Am</b></div>
+    <div class="kv"><small>TONO</small><b id="key-label">C</b></div>
     <button onclick="shiftKey(1)" aria-label="Subir medio tono">+</button>
   </div>
   <div class="cheat hidden" id="cheat-notes-box">💡 <span id="cheat-text"></span></div>
@@ -267,9 +267,67 @@ function semitoneDistance(a,b){
 }
 function transposeLyrics(t,n,f){return n===0?t:t.replace(/\[(.*?)\]/g,(_,c)=>`[${transposeChord(c,n,f)}]`)}
 
+const CH=/^[A-G][#b]?(?:maj|min|dim|aug|sus|add|m|M|[0-9]|\+|°|ø|-|b|#|\([^)]*\)|\/[A-G][#b]?)*$/;
+const isChordLine=l=>l.trim()!==''&&l.trim().split(/\s+/).every(x=>CH.test(x));
+
+function convertChordSheet(text){
+  if(text.includes('[')) {
+    // Already contains brackets, but let's clean up section lines if needed
+    return text;
+  }
+  const L=text.replace(/\r/g,'').split('\n'),out=[];
+  for(let i=0;i<L.length;i++){
+    const l=L[i];
+    const trimmed = l.trim();
+    // Check if it's a section tag like [Intro] or Intro:
+    const sec=trimmed.match(/^\[?([A-Za-z0-9\s\-\(\)]+)\]?:?$/);
+    if(sec && !isChordLine(trimmed) && trimmed.length < 25 && trimmed.length > 0 && !/[a-z]{4,}/.test(trimmed)){
+      out.push(`[${sec[1].trim()}]`);
+      continue;
+    }
+    if(isChordLine(l)){
+      const n=L[i+1];
+      if(n!==undefined && n.trim()!=='' && !isChordLine(n) && !n.trim().startsWith('[')){
+        let mapped = n;
+        const ms=[...l.matchAll(/\S+/g)];
+        for(let k=ms.length-1;k>=0;k--){
+          const p=ms[k].index;
+          if(mapped.length < p) mapped = mapped.padEnd(p, ' ');
+          mapped = mapped.slice(0, p) + '[' + ms[k][0] + ']' + mapped.slice(p);
+        }
+        out.push(mapped.replace(/\s+$/,''));
+        i++;
+      }else{
+        out.push(trimmed.split(/\s+/).map(x=>'['+x+']').join(' '));
+      }
+      continue;
+    }
+    out.push(l);
+  }
+  return out.join('\n');
+}
+
 function detectKeyFromLyrics(lyrics) {
   const matches = lyrics.match(/\[(.*?)\]/g);
-  if(!matches || matches.length === 0) return 'Am';
+  if(!matches || matches.length === 0) {
+    // Check unbracketed lines
+    const lines = lyrics.split('\n');
+    for(let l of lines) {
+      if(isChordLine(l)) {
+        const first = l.trim().split(/\s+/)[0];
+        if(first) {
+          let root = first.match(/^[A-G][#b]?/)?.[0];
+          if(root) {
+            if(FLATS[root]) root = FLATS[root];
+            const isMinor = /m/.test(first) && !/maj/.test(first);
+            const candidate = root + (isMinor ? 'm' : '');
+            if(KEYS.includes(candidate)) return candidate;
+          }
+        }
+      }
+    }
+    return 'C';
+  }
   const firstChord = matches[0].replace(/[\[\]]/g, '').trim();
   const isMinor = /m/.test(firstChord) && !/maj/.test(firstChord);
   const rootMatch = firstChord.match(/^[A-G][#b]?/);
@@ -279,7 +337,7 @@ function detectKeyFromLyrics(lyrics) {
     const candidate = root + (isMinor ? 'm' : '');
     if(KEYS.includes(candidate)) return candidate;
   }
-  return 'Am';
+  return 'C';
 }
 
 function renderLyrics(text){
@@ -497,29 +555,6 @@ function renderCapo(){
 }
 function setCapo(c){capo=c;updateSongView()}
 
-/* Formateador de Cifras con Auto-detección */
-const CH=/^[A-G][#b]?(?:maj|min|dim|aug|sus|add|m|M|[0-9]|\+|°|ø|-|b|#|\([^)]*\)|\/[A-G][#b]?)*$/;
-const isChordLine=l=>l.trim()!==''&&l.trim().split(/\s+/).every(x=>CH.test(x));
-function convertChordSheet(text){
-  if(text.includes('[')) return text; // Si ya tiene corchetes, no tocar
-  const L=text.replace(/\r/g,'').split('\n'),out=[];
-  for(let i=0;i<L.length;i++){
-    const l=L[i],sec=l.match(/^\s*\[([^\]]+)\]\s*:?\s*$/);
-    if(sec&&!CH.test(sec[1].trim())){out.push('('+sec[1].trim()+')');continue}
-    if(/\[/.test(l)){out.push(l);continue}
-    if(isChordLine(l)){
-      const n=L[i+1];
-      if(n!==undefined&&n.trim()!==''&&!isChordLine(n)&&!/^\s*\[/.test(n)){
-        let lyr=n;const ms=[...l.matchAll(/\S+/g)];
-        for(let k=ms.length-1;k>=0;k--){const p=ms[k].index;if(lyr.length<p)lyr=lyr.padEnd(p);lyr=lyr.slice(0,p)+'['+ms[k][0]+']'+lyr.slice(p)}
-        out.push(lyr.replace(/\s+$/,''));i++;
-      }else out.push(l.trim().split(/\s+/).map(x=>'['+x+']').join(' '));
-      continue;
-    }
-    out.push(l);
-  }
-  return out.join('\n');
-}
 function convertPasted(){
   const t=$('new-lyrics');
   t.value=convertChordSheet(t.value);
@@ -650,7 +685,7 @@ function autoCorrelate(buffer,sr){
 function openModal(){
   editingId=null;$('modal-title').textContent='Nueva canción';
   ['new-title','new-artist','new-lyrics','new-cheat'].forEach(i=>$(i).value='');
-  $('new-key').value='Am';$('song-modal').classList.remove('hidden');
+  $('new-key').value='C';$('song-modal').classList.remove('hidden');
 }
 function closeModal(){$('song-modal').classList.add('hidden');editingId=null}
 function saveSong(){
@@ -658,7 +693,7 @@ function saveSong(){
   let lyrics=$('new-lyrics').value;
   if(!title||!lyrics.trim()){alert('Escribe título y letra.');return}
   
-  // Auto-formatear acordes con corchetes si no los tiene al guardar
+  // Auto-formatear acordes con corchetes si no los tiene
   lyrics = convertChordSheet(lyrics);
   const key = detectKeyFromLyrics(lyrics) || $('new-key').value;
 
@@ -679,7 +714,7 @@ function saveSong(){
 
 /* Inicialización */
 $('new-key').innerHTML=KEYS.map(k=>`<option value="${k}">Tono: ${k}</option>`).join('');
-$('new-key').value='Am';
+$('new-key').value='C';
 $('scroll-btn').innerHTML=IC_PLAY;
 renderSongs();
 renderSetlist();
