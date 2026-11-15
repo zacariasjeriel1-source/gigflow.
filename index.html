@@ -225,7 +225,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <textarea id="new-lyrics" rows="7" placeholder="Pega aquí la cifra (acordes sobre la letra o entre corchetes)"></textarea>
     <div class="lk"><button onclick="convertPasted()">✨ Formatear Cifra</button><button onclick="smartAIAutoDetect(this)">🤖 IA Auto-Detectar Tono</button></div>
     <input id="new-cheat" placeholder="Nota rápida (opcional)">
-    <div class="act"><button onclick="closeModal()">Cancelar</button><button class="bt pr" onclick="saveSong()">Guardar</button></div>
+    <div class="act"><button onclick="closeModal()">Cancelar</button><button class="bt pr" onclick="saveSong()">Guardار</button></div>
   </div>
 </div>
 
@@ -268,7 +268,7 @@ function semitoneDistance(a,b){
 }
 function transposeLyrics(t,n,f){return n===0?t:t.replace(/\[(.*?)\]/g,(_,c)=>CH.test(c)?`[${transposeChord(c,n,f)}]`:`[${c}]`)}
 
-/* EXPRESIÓN REGULAR ESTRICTA PARA ACORDES REALES */
+/* EXPRESIÓN REGULAR Y DETECCIÓN FLEXIBLE PARA AMBAS PLATAFORMAS */
 const CH=/^[A-G][#b]?(?:maj|min|dim|aug|sus|add|m|M|[0-9]|\+|°|ø|-|b|#|\([^)]*\)|\/[A-G][#b]?)*$/;
 
 const isTabLine=l=>{
@@ -276,35 +276,56 @@ const isTabLine=l=>{
   return /^[a-zA-Z]\|/.test(t) || t.includes('---') || t.includes('|-') || t.includes('|--');
 };
 
-const isChordLine=l=>!isTabLine(l)&&l.trim()!==''&&l.trim().split(/\s+/).every(x=>CH.test(x));
+const isChordLine=l=>{
+  if(isTabLine(l)) return false;
+  const trimmed = l.trim();
+  if(!trimmed) return false;
+  const tokens = trimmed.split(/\s+/);
+  if(tokens.length === 0) return false;
+  let chordCount = 0;
+  for(let t of tokens) {
+    if(CH.test(t)) chordCount++;
+  }
+  // Tolera pequeños desvíos permitiendo que si el 70%+ de tokens son acordes, sea línea de acordes
+  return chordCount > 0 && (chordCount / tokens.length >= 0.7);
+};
 
 function convertChordSheet(text){
   const L=text.replace(/\r/g,'').split('\n'),out=[];
-  for(let i=0;i<L.length;i++){
+  let i=0;
+  while(i<L.length){
     const l=L[i];
     const trimmed = l.trim();
     
+    if(!trimmed){
+      i++;
+      continue;
+    }
+    
     if(isTabLine(l)){
       out.push(l);
+      i++;
       continue;
     }
     
     if(trimmed.startsWith('[') && trimmed.endsWith(']') && !isChordLine(trimmed.slice(1, -1))) {
       out.push(trimmed);
+      i++;
       continue;
     }
-    if(/^(Intro|Verso|Estribillo|Coro|Puente|Tab|Final|Solo)/i.test(trimmed) && !isChordLine(trimmed)) {
+    if(/^(Intro|Verso|Estribillo|Coro|Puente|Tab|Final|Solo|Pre-Coro|Interludio)/i.test(trimmed) && !isChordLine(trimmed)) {
       out.push(`[${trimmed.replace(':','')}]`);
+      i++;
       continue;
     }
 
     if(isChordLine(l)){
-      // Look ahead, ignorando líneas en blanco intermedias, para encontrar la letra
+      // Buscamos hacia adelante saltando líneas en blanco y espacios extra de Cifra Club o La Cuerda
       let targetIdx = -1;
       for(let j = i + 1; j < L.length; j++) {
         const candidate = L[j].trim();
         if(candidate === '') continue; // Salta renglones vacíos
-        if(isChordLine(L[j]) || isTabLine(L[j]) || (candidate.startsWith('[') && candidate.endsWith(']'))) {
+        if(isChordLine(L[j]) || isTabLine(L[j]) || /^(Intro|Verso|Estribillo|Coro|Puente|Tab|Final|Solo|Pre-Coro|Interludio)/i.test(candidate)) {
           break;
         }
         targetIdx = j;
@@ -323,15 +344,15 @@ function convertChordSheet(text){
           }
         }
         out.push(mapped.replace(/\s+$/,''));
-        i = targetIdx; // Salta hasta la línea de letra ya integrada
+        i = targetIdx + 1;
       } else {
         out.push(trimmed.split(/\s+/).map(x=> CH.test(x) ? '['+x+']' : x).join(' '));
+        i++;
       }
       continue;
     }
-    if(trimmed !== '') {
-      out.push(l);
-    }
+    out.push(l);
+    i++;
   }
   return out.join('\n');
 }
