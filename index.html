@@ -511,7 +511,7 @@ function updateSongView(){
   const cb=$('cheat-notes-box');
   if(currentSong.cheat){$('cheat-text').textContent=currentSong.cheat;cb.classList.remove('hidden')}else cb.classList.add('hidden');
   
-  // CORRECCIÓN FORZADA AL VUELO: Siempre pasamos la letra por el conversor para garantizar corchetes interactivos
+  // SOLUCIÓN DEFINITIVA: Forzamos la conversión de acordes flotantes SIEMPRE al abrir la canción
   const formattedLyrics = convertChordSheet(currentSong.lyrics);
 
   const semitones = semitoneDistance(currentSong.key, playKey);
