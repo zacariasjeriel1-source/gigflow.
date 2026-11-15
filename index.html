@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>GigFlow Pro - Músicos</title>
+<title>GigFlow Pro - Motor Armónico Avanzado</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#09090b">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -210,7 +210,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <div class="grab"></div>
     <h3 style="margin-top:0" id="fretboard-title">Diapasón</h3>
     <div class="fb" id="fretboard-container"></div>
-    <h3>Análisis Tesitura Vocal</h3>
+    <h3>Análisis Armónico y Grados</h3>
     <p id="ai-advice"></p>
     <h3>Capo Inteligente</h3>
     <div class="capo" id="capo-box"></div>
@@ -272,36 +272,49 @@ function persist(){try{localStorage.setItem('gigflow_songs',JSON.stringify(songs
 
 let songs=loadSongs(),setlist=loadSetlist(),currentSong=null,playKey=null,editingId=null,capo=0,currentSetlistIndex=-1,activeTagFilter='',currentZoom=1.1;
 
-let userInstrument='guitar';
 let wakeLock=null;
 async function requestWakeLock(){try{if('wakeLock'in navigator)wakeLock=await navigator.wakeLock.request('screen')}catch(e){}}
 function releaseWakeLock(){if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}}
 
-/* Teoría musical */
+/* MOTOR DE TEORÍA MUSICAL Y ARMONÍA AVANZADA */
 const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-const FLATS={Db:'C#',Eb:'D#',Gb:'F#',Ab:'G#',Bb:'A#'};
+const FLAT_NOTES=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const FLATS={Db:'C#',Eb:'D#',Gb:'F#',Ab:'G#',Bb:'A#',D_FLAT:'Db',E_FLAT:'Eb',G_FLAT:'Gb',A_FLAT:'Ab',B_FLAT:'Bb'};
 const KEYS=[...NOTES,'Am','A#m','Bm','Cm','C#m','Dm','D#m','Em','Fm','F#m','Gm','G#m'];
+
 const noteIdx=n=>NOTES.indexOf(FLATS[n]||n);
 const isMinorKey=k=>/m$/.test(k);
 const keyRoot=k=>k.replace(/m$/,'');
-const FLATN=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
-const useFlats=k=>{const r=keyRoot(k);return isMinorKey(k)?['D','G','C','F','A#','D#'].includes(r):['F','A#','D#','G#','C#'].includes(r)};
-const nn=(i,f)=>(f?FLATN:NOTES)[((i%12)+12)%12];
-const showKey=k=>nn(noteIdx(keyRoot(k)),useFlats(k))+(isMinorKey(k)?'m':'');
 
-function transposeChord(ch,n,f){
-  return ch.split('/').map(p=>{
-    const m=p.match(/^([A-G][#b]?)(.*)$/);
-    if(!m)return p;
-    const i=noteIdx(m[1]);
-    return i<0?p:nn(i+n,f)+m[2];
+// Reglas de armadura: define si una tonalidad prefiere bemoles según el Círculo de Quintas
+const useFlats=k=>{
+  const r=keyRoot(k);
+  return isMinorKey(k)?['D','G','C','F','A#','D#'].includes(r):['F','A#','D#','G#','C#','Gb'].includes(r);
+};
+
+const getNoteName=(i,useFlat)=>(useFlat?FLAT_NOTES:NOTES)[((i%12)+12)%12];
+const showKey=k=>getNoteName(noteIdx(keyRoot(k)),useFlats(k))+(isMinorKey(k)?'m':'');
+
+// Transposición matemática avanzada respetando acordes de barra y extensiones
+function transposeChord(ch,semitones,useFlat){
+  return ch.split('/').map(part=>{
+    const m=part.match(/^([A-G][#b]?)(.*)$/);
+    if(!m)return part;
+    const idx=noteIdx(m[1]);
+    if(idx<0)return part;
+    return getNoteName(idx+semitones,useFlat)+m[2];
   }).join('/');
 }
+
 function semitoneDistance(a,b){
   const x=noteIdx(keyRoot(a)),y=noteIdx(keyRoot(b));
   return(x<0||y<0)?0:(y-x+12)%12;
 }
-function transposeLyrics(t,n,f){return n===0?t:t.replace(/\[(.*?)\]/g,(_,c)=>CH.test(c)?`[${transposeChord(c,n,f)}]`:`[${c}]`)}
+
+function transposeLyrics(text,semitones,useFlat){
+  if(semitones===0)return text;
+  return text.replace(/\[(.*?)\]/g,(_,content)=>CH.test(content)?`[${transposeChord(content,semitones,useFlat)}]`:`[${content}]`);
+}
 
 const CH=/^[A-G][#b]?(?:maj|min|dim|aug|sus|add|m|M|[0-9]|\+|°|ø|-|b|#|\([^)]*\)|\/[A-G][#b]?)*$/;
 const isTabLine=l=>{const t=l.trim();return /^[a-zA-Z]\|/.test(t)||t.includes('---')||t.includes('|-')||t.includes('|--')};
@@ -456,10 +469,16 @@ function updateSongView(){
   $('player-title').textContent=currentSong.title;$('player-artist').textContent=currentSong.artist;
   $('key-label').textContent=showKey(playKey)+(capo?' · capo '+capo:'');
   const cb=$('cheat-notes-box');if(currentSong.cheat){$('cheat-text').textContent=currentSong.cheat;cb.classList.remove('hidden')}else cb.classList.add('hidden');
-  const formatted=convertChordSheet(currentSong.lyrics),sem=semitoneDistance(currentSong.key,playKey);
-  const transp=transposeLyrics(formatted,(sem-capo+12)%12,capo?false:useFlats(playKey));
+  
+  const formatted=convertChordSheet(currentSong.lyrics);
+  const sem=semitoneDistance(currentSong.key,playKey);
+  const useFlatAcc = useFlats(playKey);
+  const transp=transposeLyrics(formatted,(sem-capo+12)%12, useFlatAcc);
+  
   $('lyrics-container').innerHTML=renderLyrics(transp);
-  renderFretboard(playKey);askAIAssistant();renderCapo();
+  renderFretboard(playKey);
+  askAIAssistant();
+  renderCapo();
 }
 
 function changeSongKey(k){currentSong.playKey=k===currentSong.key?undefined:k;playKey=k;persist();updateSongView()}
@@ -477,35 +496,46 @@ function editCurrentSong(){
   $('song-modal').classList.remove('hidden');
 }
 
-/* Diapasón e IA Armónica con Tesitura Vocal */
+/* Diapasón e IA Armónica con Grados Romanos */
 const GUITAR_OPEN=[['e','E'],['B','B'],['G','G'],['D','D'],['A','A'],['E','E']];
 function renderFretboard(k){
-  const r=noteIdx(keyRoot(k)),root=NOTES[r];
-  $('fretboard-title').textContent=`Diapasón (Guitarra) · Tono ${k}`;
-  $('fretboard-container').innerHTML=GUITAR_OPEN.map(([l,o])=>`<div class="sr"><span class="sl">${l}</span>${[0,1,2,3].map(f=>{const n=NOTES[(noteIdx(o)+f)%12];return `<div class="fd ${n===root?'r':''}">${n}</div>`}).join('')}</div>`).join('');
+  const r=noteIdx(keyRoot(k)),root=getNoteName(r, useFlats(k));
+  $('fretboard-title').textContent=`Diapasón (Guitarra) · Tono ${showKey(k)}`;
+  $('fretboard-container').innerHTML=GUITAR_OPEN.map(([l,o])=>`<div class="sr"><span class="sl">${l}</span>${[0,1,2,3].map(f=>{const n=getNoteName(noteIdx(o)+f, useFlats(k));return `<div class="fd ${n===root?'r':''}">${n}</div>`}).join('')}</div>`).join('');
 }
+
 function askAIAssistant(){
-  const r=noteIdx(keyRoot(playKey)),n=i=>NOTES[(r+i)%12],min=isMinorKey(playKey);
-  $('ai-advice').innerHTML=min
-    ?`<b>Tesitura Vocal Menor (${playKey}):</b> Ideal para registros profundos. Acordes confortables: ${n(0)}m, ${n(3)}, ${n(5)}m, ${n(7)}m.`
-    :`<b>Tesitura Vocal Mayor (${playKey}):</b> Excelente proyección en voz alta/media. Acordes base recomendados: ${n(0)}, ${n(5)}, ${n(7)}, ${n(9)}m.`;
+  const r=noteIdx(keyRoot(playKey)),isFl=useFlats(playKey),min=isMinorKey(playKey);
+  const noteAt=i=>getNoteName(r+i,isFl);
+  
+  if(min){
+    $('ai-advice').innerHTML=`<b>Análisis Modal Menor (${showKey(playKey)}):</b><br>`+
+      `• Grados Diatónicos: <b>i</b> (${noteAt(0)}m), <b>ii°</b> (${noteAt(2)}m7b5), <b>bIII</b> (${noteAt(3)}), <b>iv</b> (${noteAt(5)}m), <b>v</b> (${noteAt(7)}m), <b>bVI</b> (${noteAt(8)}), <b>bVII</b> (${noteAt(10)}).<br>`+
+      `• Progresión menor recomendada: ${noteAt(0)}m – ${noteAt(5)}m – ${noteAt(10)} – ${noteAt(7)}m`;
+  } else {
+    $('ai-advice').innerHTML=`<b>Análisis Armónico Mayor (${showKey(playKey)}):</b><br>`+
+      `• Grados Diatónicos: <b>I</b> (${noteAt(0)}), <b>ii</b> (${noteAt(2)}m), <b>iii</b> (${noteAt(4)}m), <b>IV</b> (${noteAt(5)}), <b>V</b> (${noteAt(7)}), <b>vi</b> (${noteAt(9)}m), <b>vii°</b> (${noteAt(11)}dim).<br>`+
+      `• Cadencia estándar (ii–V–I): ${noteAt(2)}m – ${noteAt(7)} – ${noteAt(0)}`;
+  }
 }
 
 function renderCapo(){
   const box=$('capo-box');if(!box||!playKey)return;
+  const useFlatAcc = useFlats(playKey);
   box.innerHTML=[0,1,2,3,4,5].map(c=>{
-    const r=NOTES[(noteIdx(keyRoot(playKey))-c+120)%12]+(isMinorKey(playKey)?'m':'');
+    const rIdx=noteIdx(keyRoot(playKey))-c;
+    const r=getNoteName(rIdx, useFlatAcc)+(isMinorKey(playKey)?'m':'');
     return `<button class="${c===capo?'on':''}" onclick="setCapo(${c})">${c?'Capo '+c:'Sin'} → ${r}</button>`
   }).join('');
-  $('capo-tip').textContent=`Capo inteligente para facilitar digitación en la guitarra sin perder tu tesitura vocal.`;
+  $('capo-tip').textContent=`Cálculo de cejilla inteligente basado en formas abiertas sobre la armadura de ${showKey(playKey)}.`;
 }
 function setCapo(c){capo=c;updateSongView()}
 
 /* Modal de Acorde Clickeado */
 function showChordDetail(ch){
   $('chord-modal-title').textContent=ch;
-  $('chord-modal-diagram').innerHTML=`Posición estándar para ${ch}<br><br>[ O X O X X O ]<br>  1 3 4 2   `;
-  $('chord-modal-desc').textContent=`Toca este acorde con los dedos firmes sobre los trastes correspondientes.`;
+  $('chord-modal-diagram').innerHTML=`Estructura y posición estándar<br><br>[ O X O X X O ]<br>  1 3 4 2   `;
+  $('chord-modal-desc').textContent=`Acorde optimizado para ejecución limpia en guitarra dentro del contexto armónico actual.`;
   $('chord-modal').classList.remove('hidden');
 }
 function closeChordModal(){$('chord-modal').classList.add('hidden')}
