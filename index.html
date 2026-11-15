@@ -277,12 +277,10 @@ function convertChordSheet(text){
     const l=L[i];
     const trimmed = l.trim();
     
-    // Detectar líneas de sección como [Intro], [Estribillo], etc.
     if(trimmed.startsWith('[') && trimmed.endsWith(']') && !isChordLine(trimmed.slice(1, -1))) {
       out.push(trimmed);
       continue;
     }
-    // Si viene sin corchetes pero es sección (ej: Intro:)
     if(/^(Intro|Verso|Estribillo|Coro|Puente|Tab|Final|Solo)/i.test(trimmed) && !isChordLine(trimmed)) {
       out.push(`[${trimmed.replace(':','')}]`);
       continue;
@@ -331,7 +329,6 @@ function detectKeyFromLyrics(lyrics) {
       }
     }
   }
-  // Si no hay corchetes válidos, buscamos en líneas sueltas
   const lines = lyrics.split('\n');
   for(let l of lines) {
     const tokens = l.trim().split(/\s+/);
@@ -360,7 +357,6 @@ function renderLyrics(text){
       if(CH.test(token)) {
         out+=`<span class="seg"><i class="c">${esc(token)}</i><span class="t">${esc(p[i+1]||'')||'&nbsp;'}</span></span>`;
       } else {
-        // Es una sección como [Intro] o [Estribillo], renderizar como título de sección
         out+=`<div style="width:100%; color:var(--ac); font-weight:800; font-size:0.9rem; margin-top:10px; margin-bottom:4px;">[${esc(token)}]</div>`;
       }
     }
@@ -509,8 +505,14 @@ function updateSongView(){
   const cb=$('cheat-notes-box');
   if(currentSong.cheat){$('cheat-text').textContent=currentSong.cheat;cb.classList.remove('hidden')}else cb.classList.add('hidden');
   
+  // SOLUCIÓN AL VUELO: Si la canción no tiene corchetes guardados, los formateamos automáticamente al abrirla
+  let rawLyrics = currentSong.lyrics;
+  if(!rawLyrics.includes('[')) {
+    rawLyrics = convertChordSheet(rawLyrics);
+  }
+
   const semitones = semitoneDistance(currentSong.key, playKey);
-  const transposed = transposeLyrics(currentSong.lyrics, (semitones - capo + 12) % 12, capo ? false : useFlats(playKey));
+  const transposed = transposeLyrics(rawLyrics, (semitones - capo + 12) % 12, capo ? false : useFlats(playKey));
   $('lyrics-container').innerHTML = renderLyrics(transposed);
   renderFretboard(playKey);
   askAIAssistant();
