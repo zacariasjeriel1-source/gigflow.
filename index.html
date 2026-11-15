@@ -11,10 +11,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 :root{--bg:#09090b;--s1:#131316;--s2:#1c1c21;--line:#26262d;--tx:#f5f5f7;--mu:#8e8e9a;--ac:#8b5cf6;--ac2:#ec4899;--ok:#22c55e;--root:#fbbf24;--g:linear-gradient(135deg,#8b5cf6,#ec4899)}
-[data-theme="vintage"]{--bg:#f4f1ea;--s1:#e3ded4;--s2:#d0c9bc;--line:#b5ad9e;--tx:#2c2c2a;--mu:#6b675e;--ac:#7c3aed;--ac2:#db2777}
-[data-theme="neon"]{--bg:#05050a;--s1:#0f0f1a;--s2:#1a1a2e;--line:#2a2a4e;--tx:#00ffcc;--mu:#ff007f;--ac:#00ffcc;--ac2:#ff007f;--g:linear-gradient(135deg,#00ffcc,#ff007f)}
-[data-theme="amoled"]{--bg:#000000;--s1:#080808;--s2:#121212;--line:#222222;--tx:#ffffff;--mu:#888888;--ac:#a855f7;--ac2:#ec4899}
-
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-tap-highlight-color:transparent;transition:background .2s,color .2s}
 html,body{height:100%}
 body{background:var(--bg);color:var(--tx);-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top)}
@@ -63,6 +59,17 @@ h1{font-size:2rem;font-weight:800;letter-spacing:-.03em}
 .tabs button.on{color:var(--tx)}
 .tabs button.on svg{stroke:var(--ac)}
 
+/* Afinador */
+#tuner-view{text-align:center;padding-top:36px}
+.big{font-size:7rem;font-weight:800;letter-spacing:-.05em;line-height:1;margin:34px 0 4px;transition:color .15s}
+.ok .big{color:var(--ok)}
+.hz{font-size:.9rem;color:var(--mu);font-variant-numeric:tabular-nums}
+.meter{position:relative;height:8px;border-radius:8px;background:var(--s2);margin:36px 20px 14px}
+.meter:after{content:"";position:absolute;left:50%;top:-6px;width:2px;height:20px;background:var(--mu);transform:translateX(-50%)}
+#needle{position:absolute;top:-8px;left:50%;width:6px;height:24px;border-radius:4px;background:var(--g);transform:translateX(-50%);transition:left .12s}
+.ok #needle{background:var(--ok)}
+#cents-display{font-size:.9rem;color:var(--mu);min-height:1.4em;margin-bottom:34px}
+
 /* Reproductor / Concierto */
 #concert-view{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column;max-width:none;padding:env(safe-area-inset-top) 0 0}
 .ptop{display:flex;align-items:center;gap:8px;padding:10px 14px;max-width:520px;width:100%;margin:0 auto}
@@ -93,7 +100,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .play{width:60px;height:60px;border-radius:50%;background:var(--g);display:grid;place-items:center;box-shadow:0 8px 24px rgba(139,92,246,.45)}
 .play svg{width:26px;height:26px;color:#fff}
 
-/* Modal Acorde Interactivo & Herramientas */
+/* Herramientas y Diapasón */
 .sheet{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);display:flex;align-items:flex-end}
 .sh{background:var(--s1);width:100%;max-width:520px;margin:0 auto;border-radius:22px 22px 0 0;padding:16px 18px calc(24px + env(safe-area-inset-bottom));max-height:85dvh;overflow-y:auto}
 .grab{width:40px;height:4px;border-radius:4px;background:var(--line);margin:0 auto 14px}
@@ -123,15 +130,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 #webcam-video{display:none}
 </style>
 </head>
-<body data-theme="amoled">
+<body>
 
 <!-- BIBLIOTECA -->
 <main id="library-view" class="view">
   <div class="top">
     <h1>Biblioteca</h1>
     <div style="display:flex;gap:8px">
-      <button class="ib" onclick="exportData()" title="Exportar Respaldo JSON"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
-      <button class="ib" onclick="exportSetlistPDF()" title="Imprimir PDF"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></button>
+      <button class="ib" onclick="exportData()" title="Respaldar JSON"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+      <button class="ib" onclick="exportSetlistPDF()" title="Exportar PDF"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></button>
     </div>
   </div>
   <input class="search" id="search-input" placeholder="Buscar canción, artista o #tag" oninput="filterSongs()">
@@ -142,7 +149,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 <!-- LISTADO (SETLIST) -->
 <main id="setlist-view" class="view hidden">
   <div class="top">
-    <h1>Listado (Setlist)</h1>
+    <h1>Listado</h1>
   </div>
   <div class="master-bar">
     <label>Transposición Global:</label>
@@ -153,29 +160,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   <div id="setlist-songs-list"></div>
 </main>
 
-<!-- AJUSTES Y TEMAS -->
-<main id="settings-view" class="view hidden">
-  <h1>Ajustes y Temas</h1>
-  <div style="margin-top:20px">
-    <h3 style="margin-bottom:8px">Tema Visual</h3>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
-      <button class="bt" onclick="setTheme('amoled')">🖤 AMOLED Puro</button>
-      <button class="bt" onclick="setTheme('neon')">⚡ Neón Cyberpunk</button>
-      <button class="bt" onclick="setTheme('vintage')">📜 Papel Vintage</button>
-      <button class="bt" onclick="setTheme('dark')">🌙 Oscuro Pro</button>
-    </div>
-    <h3 style="margin-bottom:8px">Instrumento Base</h3>
-    <select id="global-instrument" onchange="saveInstrument(this.value)" style="width:100%;background:var(--s2);border:1px solid var(--line);padding:12px;border-radius:12px;color:var(--tx);margin-bottom:20px">
-      <option value="guitar">🎸 Guitarra</option>
-      <option value="ukulele">🪕 Ukelele</option>
-      <option value="bass">🎸 Bajo (4 cuerdas)</option>
-    </select>
-    <h3 style="margin-bottom:8px">Respaldo de Datos</h3>
-    <div style="display:flex;gap:10px">
-      <button class="bt pr" onclick="exportData()">Exportar Biblioteca JSON</button>
-      <label class="bt" style="text-align:center;padding:12px;cursor:pointer">Importar <input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
-    </div>
+<!-- AFINADOR -->
+<main id="tuner-view" class="view hidden">
+  <h1>Afinador</h1>
+  <div id="tuner-box" style="margin-top:20px">
+    <div class="big" id="note-display">–</div>
+    <div class="hz" id="hz-display">0.0 Hz</div>
+    <div class="meter"><i id="needle"></i></div>
+    <p id="cents-display">Toca una cuerda cerca del micrófono</p>
   </div>
+  <button class="bt pr" style="width:100%;max-width:300px;padding:15px;margin-top:20px" id="tuner-btn" onclick="toggleTuner()">Activar micrófono</button>
 </main>
 
 <!-- REPRODUCTOR / CONCIERTO -->
@@ -198,14 +192,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <div class="spd">
       <span>Lento</span><input type="range" id="scroll-speed" min="1" max="10" value="4"><span>Rápido</span>
       <div style="display:flex;gap:4px;margin-left:auto">
-        <button class="pill" onclick="adjustZoom(-1)" title="Achicar letra">A-</button>
-        <button class="pill" onclick="adjustZoom(1)" title="Agrandar letra">A+</button>
+        <button class="pill" onclick="adjustZoom(-1)">A-</button>
+        <button class="pill" onclick="adjustZoom(1)">A+</button>
       </div>
     </div>
     <div class="ctl">
-      <button class="ib" id="face-btn" onclick="toggleFaceTracking()" title="Scroll Facial por cámara"><svg viewBox="0 0 24 24"><path d="M3 8V6a2 2 0 012-2h2M17 4h2a2 2 0 012 2v2M21 16v2a2 2 0 01-2 2h-2M7 20H5a2 2 0 01-2-2v-2M9 10v1M15 10v1M9 15c1.5 1.3 4.5 1.3 6 0"/></svg></button>
+      <button class="ib" id="face-btn" onclick="toggleFaceTracking()" title="Scroll Facial"><svg viewBox="0 0 24 24"><path d="M3 8V6a2 2 0 012-2h2M17 4h2a2 2 0 012 2v2M21 16v2a2 2 0 01-2 2h-2M7 20H5a2 2 0 01-2-2v-2M9 10v1M15 10v1M9 15c1.5 1.3 4.5 1.3 6 0"/></svg></button>
       <button class="play" id="scroll-btn" onclick="toggleAutoScroll()"></button>
-      <button class="ib" onclick="openSheet()" title="Herramientas y Diapasón"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
+      <button class="ib" onclick="openSheet()" title="Herramientas"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
     </div>
   </div></div>
 </section>
@@ -216,7 +210,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <div class="grab"></div>
     <h3 style="margin-top:0" id="fretboard-title">Diapasón</h3>
     <div class="fb" id="fretboard-container"></div>
-    <h3>Análisis Tesitura Vocal & Armonía</h3>
+    <h3>Análisis Tesitura Vocal</h3>
     <p id="ai-advice"></p>
     <h3>Capo Inteligente</h3>
     <div class="capo" id="capo-box"></div>
@@ -244,7 +238,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 <nav class="tabs" id="tabs">
   <button id="tab-library" class="on" onclick="switchView('library')"><svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>Biblioteca</button>
   <button id="tab-setlist" onclick="switchView('setlist')"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Listado</button>
-  <button id="tab-settings" onclick="switchView('settings')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Ajustes</button>
+  <button id="tab-tuner" onclick="switchView('tuner')"><svg viewBox="0 0 24 24"><path d="M12 2v6M5 12a7 7 0 0014 0M12 19v3M9 22h6"/><rect x="9" y="2" width="6" height="10" rx="3"/></svg>Afinador</button>
 </nav>
 
 <video id="webcam-video" autoplay playsinline muted></video>
@@ -255,11 +249,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <h3 id="modal-title">Nueva canción</h3>
     <input id="new-title" placeholder="Título">
     <input id="new-artist" placeholder="Artista">
-    <input id="new-tags" placeholder="Tags (separados por coma, ej: #acústico, #rock)">
+    <input id="new-tags" placeholder="Tags (ej: #acústico, #rock)">
     <div class="lk"><button onclick="searchWeb('cifraclub')">Buscar Cifra Club</button><button onclick="searchWeb('lacuerda')">Buscar La Cuerda</button></div>
     <select id="new-key"></select>
-    <textarea id="new-lyrics" rows="7" placeholder="Pega aquí la cifra (acordes sobre la letra o entre corchetes)"></textarea>
-    <div class="lk"><button onclick="convertPasted()">✨ Formatear Cifra</button><button onclick="smartAIAutoDetect(this)">🤖 IA Tono</button></div>
+    <textarea id="new-lyrics" rows="7" placeholder="Pega aquí la cifra"></textarea>
+    <div class="lk"><button onclick="convertPasted()">✨ Formatear Cifra</button><button onclick="smartAIAutoDetect()">🤖 IA Tono</button></div>
     <input id="new-cheat" placeholder="Nota rápida en vivo (opcional)">
     <div class="act"><button onclick="closeModal()">Cancelar</button><button class="bt pr" onclick="saveSong()">Guardar</button></div>
   </div>
@@ -278,13 +272,7 @@ function persist(){try{localStorage.setItem('gigflow_songs',JSON.stringify(songs
 
 let songs=loadSongs(),setlist=loadSetlist(),currentSong=null,playKey=null,editingId=null,capo=0,currentSetlistIndex=-1,activeTagFilter='',currentZoom=1.1;
 
-/* Config general */
-let userInstrument=localStorage.getItem('gigflow_inst')||'guitar';
-function saveInstrument(i){userInstrument=i;localStorage.setItem('gigflow_inst',i);renderFretboard(playKey)}
-function setTheme(t){document.body.setAttribute('data-theme',t);localStorage.setItem('gigflow_theme',t)}
-if(localStorage.getItem('gigflow_theme'))setTheme(localStorage.getItem('gigflow_theme'));
-
-/* WakeLock para modo concierto sin apagar pantalla */
+let userInstrument='guitar';
 let wakeLock=null;
 async function requestWakeLock(){try{if('wakeLock'in navigator)wakeLock=await navigator.wakeLock.request('screen')}catch(e){}}
 function releaseWakeLock(){if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}}
@@ -408,7 +396,7 @@ function renderSongs(){
         <div class="tags-preview">${(s.tags||'').split(',').map(t=>t.trim()?`<span class="tag-badge">${esc(t)}</span>`:'' ).join('')}</div>
       </div>
       <span class="chip">${esc(s.key)}</span>
-      <button class="btn-icon" onclick="event.stopPropagation(); addToSetlist(${s.id})" title="Añadir al setlist"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="btn-icon" onclick="event.stopPropagation(); addToSetlist(${s.id})" title="Añadir"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
       <button class="btn-icon del" onclick="event.stopPropagation(); deleteSong(${s.id})" title="Borrar"><svg viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
     </div>`).join('');
 }
@@ -448,11 +436,11 @@ function applyMasterTranspose(tk){
 
 /* Vistas y Reproductor */
 function switchView(v){
-  ['library','setlist','settings','concert'].forEach(x=>$(x+'-view').classList.add('hidden'));
-  stopAutoScroll();stopFaceTracking();closeSheet();releaseWakeLock();
+  ['library','setlist','tuner','concert'].forEach(x=>$(x+'-view').classList.add('hidden'));
+  stopAutoScroll();stopFaceTracking();stopTuner();closeSheet();releaseWakeLock();
   $(v+'-view').classList.remove('hidden');
   const inP=v==='concert';$('tabs').classList.toggle('hidden',inP);$('fab').classList.toggle('hidden',v!=='library');
-  ['library','setlist','settings'].forEach(x=>$(`tab-${x}`).classList.toggle('on',v===x));
+  ['library','setlist','tuner'].forEach(x=>$(`tab-${x}`).classList.toggle('on',v===x));
   if(v==='library')renderSongs();if(v==='setlist')renderSetlist();
 }
 function openSheet(){$('sheet').classList.remove('hidden')}
@@ -491,14 +479,10 @@ function editCurrentSong(){
 
 /* Diapasón e IA Armónica con Tesitura Vocal */
 const GUITAR_OPEN=[['e','E'],['B','B'],['G','G'],['D','D'],['A','A'],['E','E']];
-const UKE_OPEN=[['A','A'],['E','E'],['C','C'],['G','G']];
-const BASS_OPEN=[['G','G'],['D','D'],['A','A'],['E','E']];
-
 function renderFretboard(k){
   const r=noteIdx(keyRoot(k)),root=NOTES[r];
-  let opens=GUITAR_OPEN;if(userInstrument==='ukulele')opens=UKE_OPEN;if(userInstrument==='bass')opens=BASS_OPEN;
-  $('fretboard-title').textContent=`Diapasón (${userInstrument.toUpperCase()}) · Tono ${k}`;
-  $('fretboard-container').innerHTML=opens.map(([l,o])=>`<div class="sr"><span class="sl">${l}</span>${[0,1,2,3].map(f=>{const n=NOTES[(noteIdx(o)+f)%12];return `<div class="fd ${n===root?'r':''}">${n}</div>`}).join('')}</div>`).join('');
+  $('fretboard-title').textContent=`Diapasón (Guitarra) · Tono ${k}`;
+  $('fretboard-container').innerHTML=GUITAR_OPEN.map(([l,o])=>`<div class="sr"><span class="sl">${l}</span>${[0,1,2,3].map(f=>{const n=NOTES[(noteIdx(o)+f)%12];return `<div class="fd ${n===root?'r':''}">${n}</div>`}).join('')}</div>`).join('');
 }
 function askAIAssistant(){
   const r=noteIdx(keyRoot(playKey)),n=i=>NOTES[(r+i)%12],min=isMinorKey(playKey);
@@ -517,11 +501,11 @@ function renderCapo(){
 }
 function setCapo(c){capo=c;updateSongView()}
 
-/* Modal de Acorde Clickeado (Diagrama visual) */
+/* Modal de Acorde Clickeado */
 function showChordDetail(ch){
   $('chord-modal-title').textContent=ch;
   $('chord-modal-diagram').innerHTML=`Posición estándar para ${ch}<br><br>[ O X O X X O ]<br>  1 3 4 2   `;
-  $('chord-modal-desc').textContent=`Toca este acorde con los dedos firmes sobre los trastes correspondientes para un sonido limpio en vivo.`;
+  $('chord-modal-desc').textContent=`Toca este acorde con los dedos firmes sobre los trastes correspondientes.`;
   $('chord-modal').classList.remove('hidden');
 }
 function closeChordModal(){$('chord-modal').classList.add('hidden')}
@@ -541,14 +525,55 @@ function exportData(){
   const blob=new Blob([data],{type:'json'});const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download='gigflow_backup.json';a.click();
 }
-function importData(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    try{const d=JSON.parse(ev.target.result);if(d.songs){songs=d.songs;setlist=d.setlist||[];persist();renderSongs();renderSetlist();alert('¡Respaldo importado con éxito!')}}
-    catch(err){alert('Archivo no válido')}
-  };
-  reader.readAsText(file);
+
+/* Afinador con Micrófono */
+let audioContext=null,analyser=null,micStream=null,tunerRAF=null,lastPitchT=0;
+function toggleTuner(){micStream?stopTuner():startTuner()}
+async function startTuner(){
+  try{
+    audioContext=new(window.AudioContext||window.webkitAudioContext)();
+    micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
+    analyser=audioContext.createAnalyser();analyser.fftSize=2048;
+    audioContext.createMediaStreamSource(micStream).connect(analyser);
+    $('tuner-btn').textContent='Detener micrófono';detectPitch(0);
+  }catch(e){stopTuner();alert('Permiso de micrófono denegado.')}
+}
+function stopTuner(){
+  cancelAnimationFrame(tunerRAF);tunerRAF=null;
+  if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}
+  if(audioContext){audioContext.close().catch(()=>{});audioContext=null}
+  analyser=null;
+  if($('tuner-btn')){$('tuner-btn').textContent='Activar micrófono';$('note-display').textContent='–';$('hz-display').textContent='0.0 Hz';$('cents-display').textContent='Toca una cuerda';$('needle').style.left='50%';$('tuner-box').classList.remove('ok')}
+}
+function detectPitch(t){
+  if(!analyser)return;
+  tunerRAF=requestAnimationFrame(detectPitch);
+  if(t-lastPitchT<80)return;lastPitchT=t;
+  const buf=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(buf);
+  const f=autoCorrelate(buf,audioContext.sampleRate);if(f===-1)return;
+  const ex=12*Math.log2(f/440)+69,midi=Math.round(ex),cents=Math.round((ex-midi)*100);
+  $('note-display').textContent=NOTES[((midi%12)+12)%12];
+  $('hz-display').textContent=f.toFixed(1)+' Hz';
+  $('needle').style.left=(50+Math.max(-50,Math.min(50,cents)))+'%';
+  $('cents-display').textContent=Math.abs(cents)<=5?'Afinada':(cents>0?`Sostenida +${cents} cents`:`Bemol ${cents} cents`);
+  $('tuner-box').classList.toggle('ok',Math.abs(cents)<=5);
+}
+function autoCorrelate(buffer,sr){
+  let SIZE=buffer.length,sum=0;
+  for(let i=0;i<SIZE;i++)sum+=buffer[i]*buffer[i];
+  if(Math.sqrt(sum/SIZE)<0.01)return -1;
+  let r1=0,r2=SIZE-1;const th=.2;
+  for(let i=0;i<SIZE/2;i++)if(Math.abs(buffer[i])<th){r1=i;break}
+  for(let i=1;i<SIZE/2;i++)if(Math.abs(buffer[SIZE-i])<th){r2=SIZE-i;break}
+  const buf=buffer.slice(r1,r2);SIZE=buf.length;if(SIZE<64)return -1;
+  const c=new Float32Array(SIZE);
+  for(let i=0;i<SIZE;i++)for(let j=0;j<SIZE-i;j++)c[i]+=buf[j]*buf[j+i];
+  let d=0;while(d<SIZE-1&&c[d]>c[d+1])d++;
+  let mv=-1,mp=-1;for(let i=d;i<SIZE;i++)if(c[i]>mv){mv=c[i];mp=i}
+  if(mp<1||mp>=SIZE-1)return -1;
+  const x1=c[mp-1],x2=c[mp],x3=c[mp+1],a=(x1+x3-2*x2)/2,b=(x3-x1)/2;
+  const f=sr/(a?mp-b/(2*a):mp);
+  return(f>60&&f<1400)?f:-1;
 }
 
 /* Auto-scroll */
