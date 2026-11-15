@@ -225,7 +225,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <textarea id="new-lyrics" rows="7" placeholder="Pega aquí la cifra (acordes sobre la letra o entre corchetes)"></textarea>
     <div class="lk"><button onclick="convertPasted()">✨ Formatear Cifra</button><button onclick="smartAIAutoDetect(this)">🤖 IA Auto-Detectar Tono</button></div>
     <input id="new-cheat" placeholder="Nota rápida (opcional)">
-    <div class="act"><button onclick="closeModal()">Cancelar</button><button class="bt pr" onclick="saveSong()">Guardار</button></div>
+    <div class="act"><button onclick="closeModal()">Cancelar</button><button class="bt pr" onclick="saveSong()">Guardar</button></div>
   </div>
 </div>
 
@@ -286,7 +286,6 @@ const isChordLine=l=>{
   for(let t of tokens) {
     if(CH.test(t)) chordCount++;
   }
-  // Tolera pequeños desvíos permitiendo que si el 70%+ de tokens son acordes, sea línea de acordes
   return chordCount > 0 && (chordCount / tokens.length >= 0.7);
 };
 
@@ -320,11 +319,10 @@ function convertChordSheet(text){
     }
 
     if(isChordLine(l)){
-      // Buscamos hacia adelante saltando líneas en blanco y espacios extra de Cifra Club o La Cuerda
       let targetIdx = -1;
       for(let j = i + 1; j < L.length; j++) {
         const candidate = L[j].trim();
-        if(candidate === '') continue; // Salta renglones vacíos
+        if(candidate === '') continue;
         if(isChordLine(L[j]) || isTabLine(L[j]) || /^(Intro|Verso|Estribillo|Coro|Puente|Tab|Final|Solo|Pre-Coro|Interludio)/i.test(candidate)) {
           break;
         }
@@ -657,7 +655,7 @@ function startAutoScroll(){
 }
 function stopAutoScroll(){isScrolling=false;clearInterval(scrollInterval);scrollInterval=null;scrollAcc=0;const b=$('scroll-btn');if(b)b.innerHTML=IC_PLAY}
 
-/* Seguimiento Facial */
+/* Seguimiento Facial Inteligente con detección de giro de cabeza / mirar hacia otro lado */
 const MP_CAMERA='https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js';
 const MP_FACE='https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js';
 const MP_BASE='https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/';
@@ -674,8 +672,20 @@ async function startFaceTracking(){
   faceMesh.setOptions({maxNumFaces:1,refineLandmarks:false,minDetectionConfidence:.5,minTrackingConfidence:.5});
   faceMesh.onResults(r=>{
     if(!trackingActive||!r.multiFaceLandmarks||!r.multiFaceLandmarks.length)return;
-    faceAcc+=Number($('scroll-speed').value)*0.12;const st=Math.floor(faceAcc);
-    if(st>=1){$('lyrics-container').scrollTop+=st;faceAcc-=st}
+    const lm = r.multiFaceLandmarks[0];
+    const nose = lm[1];
+    const left = lm[234];
+    const right = lm[454];
+    if(nose && left && right){
+      const midX = (left.x + right.x) / 2;
+      const width = Math.abs(right.x - left.x);
+      const offset = Math.abs(nose.x - midX);
+      // Si el usuario está de frente (desvío menor al 28% del ancho de la cara), avanza el scroll. Si gira o mira a otro lado, se para al instante.
+      if(offset < width * 0.28){
+        faceAcc+=Number($('scroll-speed').value)*0.12;const st=Math.floor(faceAcc);
+        if(st>=1){$('lyrics-container').scrollTop+=st;faceAcc-=st}
+      }
+    }
   });
   camera=new Camera(v,{onFrame:async()=>{if(trackingActive&&faceMesh)await faceMesh.send({image:v})},width:320,height:240});
   trackingActive=true;await camera.start();
