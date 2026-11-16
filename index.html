@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>GigFlow Pro - Motor Armónico Avanzado</title>
+<title>GigFlow Pro - Músicos</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#09090b">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -59,16 +59,19 @@ h1{font-size:2rem;font-weight:800;letter-spacing:-.03em}
 .tabs button.on{color:var(--tx)}
 .tabs button.on svg{stroke:var(--ac)}
 
-/* Afinador */
-#tuner-view{text-align:center;padding-top:36px}
-.big{font-size:7rem;font-weight:800;letter-spacing:-.05em;line-height:1;margin:34px 0 4px;transition:color .15s}
+/* Afinador Seguro con Guía de Cuerdas */
+#tuner-view{text-align:center;padding-top:24px}
+.string-guide{display:flex;justify-content:center;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.str-btn{background:var(--s1);border:1px solid var(--line);padding:6px 10px;border-radius:10px;font-size:.75rem;font-weight:bold;color:var(--mu);cursor:pointer}
+.str-btn.active{background:var(--ac);color:#fff;border-color:transparent}
+.big{font-size:6rem;font-weight:800;letter-spacing:-.05em;line-height:1;margin:10px 0 4px;transition:color .15s}
 .ok .big{color:var(--ok)}
 .hz{font-size:.9rem;color:var(--mu);font-variant-numeric:tabular-nums}
-.meter{position:relative;height:8px;border-radius:8px;background:var(--s2);margin:36px 20px 14px}
+.meter{position:relative;height:8px;border-radius:8px;background:var(--s2);margin:24px 20px 10px}
 .meter:after{content:"";position:absolute;left:50%;top:-6px;width:2px;height:20px;background:var(--mu);transform:translateX(-50%)}
 #needle{position:absolute;top:-8px;left:50%;width:6px;height:24px;border-radius:4px;background:var(--g);transform:translateX(-50%);transition:left .12s}
 .ok #needle{background:var(--ok)}
-#cents-display{font-size:.9rem;color:var(--mu);min-height:1.4em;margin-bottom:34px}
+#cents-display{font-size:.9rem;color:var(--mu);min-height:1.4em;margin-bottom:20px}
 
 /* Reproductor / Concierto */
 #concert-view{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column;max-width:none;padding:env(safe-area-inset-top) 0 0}
@@ -160,16 +163,24 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   <div id="setlist-songs-list"></div>
 </main>
 
-<!-- AFINADOR -->
+<!-- AFINADOR SEGURO -->
 <main id="tuner-view" class="view hidden">
-  <h1>Afinador</h1>
-  <div id="tuner-box" style="margin-top:20px">
-    <div class="big" id="note-display">–</div>
-    <div class="hz" id="hz-display">0.0 Hz</div>
-    <div class="meter"><i id="needle"></i></div>
-    <p id="cents-display">Toca una cuerda cerca del micrófono</p>
+  <h1>Afinador Seguro</h1>
+  <div class="string-guide">
+    <button class="str-btn active" onclick="selectString(329.63, '1ª e (Aguda)', this)">1ª e</button>
+    <button class="str-btn" onclick="selectString(246.94, '2ª B', this)">2ª B</button>
+    <button class="str-btn" onclick="selectString(196.00, '3ª G', this)">3ª G</button>
+    <button class="str-btn" onclick="selectString(146.83, '4ª D', this)">4ª D</button>
+    <button class="str-btn" onclick="selectString(110.00, '5ª A', this)">5ª A</button>
+    <button class="str-btn" onclick="selectString(82.41, '6ª E (Grave)', this)">6ª E</button>
   </div>
-  <button class="bt pr" style="width:100%;max-width:300px;padding:15px;margin-top:20px" id="tuner-btn" onclick="toggleTuner()">Activar micrófono</button>
+  <div id="tuner-box">
+    <div class="big" id="note-display">E</div>
+    <div class="hz" id="hz-display">Objetivo: 329.6 Hz (1ª e)</div>
+    <div class="meter"><i id="needle"></i></div>
+    <p id="cents-display">Selecciona una cuerda o toca libremente</p>
+  </div>
+  <button class="bt pr" style="width:100%;max-width:300px;padding:15px;margin-top:10px" id="tuner-btn" onclick="toggleTuner()">Activar micrófono</button>
 </main>
 
 <!-- REPRODUCTOR / CONCIERTO -->
@@ -243,16 +254,23 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 <video id="webcam-video" autoplay playsinline muted></video>
 
-<!-- MODAL CREAR/EDITAR -->
+<!-- MODAL CREAR/EDITAR CON IMPORTADOR MÁGICO -->
 <div id="song-modal" class="modal hidden" onclick="if(event.target===this)closeModal()">
   <div class="mc">
     <h3 id="modal-title">Nueva canción</h3>
     <input id="new-title" placeholder="Título">
     <input id="new-artist" placeholder="Artista">
     <input id="new-tags" placeholder="Tags (ej: #acústico, #rock)">
+    
+    <!-- Importador Mágico de Enlaces -->
+    <div style="background:var(--s2);padding:10px;border-radius:12px;margin-bottom:10px">
+      <input id="new-url" placeholder="Pega enlace de YouTube, Cifra Club o La Cuerda" style="margin-bottom:6px">
+      <button class="bt pr" onclick="importFromURL()" style="width:100%;padding:10px">✨ Cargar Letra y Acordes del Enlace</button>
+    </div>
+
     <div class="lk"><button onclick="webSearch('cifraclub')">Buscar Cifra Club</button><button onclick="webSearch('lacuerda')">Buscar La Cuerda</button></div>
     <select id="new-key"></select>
-    <textarea id="new-lyrics" rows="7" placeholder="Pega aquí la cifra"></textarea>
+    <textarea id="new-lyrics" rows="7" placeholder="Pega aquí la cifra o cárgala automáticamente arriba"></textarea>
     <div class="lk"><button onclick="convertPasted()">✨ Formatear Cifra</button><button onclick="smartAIAutoDetect()">🤖 IA Tono</button></div>
     <input id="new-cheat" placeholder="Nota rápida en vivo (opcional)">
     <div class="act"><button onclick="closeModal()">Cancelar</button><button class="bt pr" onclick="saveSong()">Guardar</button></div>
@@ -279,7 +297,7 @@ function releaseWakeLock(){if(wakeLock){wakeLock.release().catch(()=>{});wakeLoc
 /* MOTOR DE TEORÍA MUSICAL Y ARMONÍA AVANZADA */
 const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const FLAT_NOTES=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
-const FLATS={Db:'C#',Eb:'D#',Gb:'F#',Ab:'G#',Bb:'A#',D_FLAT:'Db',E_FLAT:'Eb',G_FLAT:'Gb',A_FLAT:'Ab',B_FLAT:'Bb'};
+const FLATS={Db:'C#',Eb:'D#',Gb:'F#',Ab:'G#',Bb:'A#'};
 const KEYS=[...NOTES,'Am','A#m','Bm','Cm','C#m','Dm','D#m','Em','Fm','F#m','Gm','G#m'];
 
 const noteIdx=n=>NOTES.indexOf(FLATS[n]||n);
@@ -375,6 +393,82 @@ function renderLyrics(text){
 function adjustZoom(d){
   currentZoom = Math.min(1.6, Math.max(0.8, currentZoom + (d * 0.1)));
   $('lyrics-container').style.fontSize = currentZoom + 'rem';
+}
+
+/* IMPORTADOR MÁGICO AUTOMÁTICO (YOUTUBE O WEB) */
+async function importFromURL(){
+  const url=$('new-url').value.trim();
+  if(!url){alert('Pega un enlace válido.');return;}
+  
+  try{
+    let targetURL = url;
+    
+    // Si es YouTube, extraemos el título y buscamos en Cifra Club automáticamente
+    if(url.includes('youtube.com') || url.includes('youtu.be')){
+      alert('📺 Analizando video de YouTube y buscando acordes...');
+      const res = await fetch('https://noembed.com/embed?url=' + encodeURIComponent(url));
+      const data = await res.json();
+      if(data && data.title){
+        let cleanTitle = data.title
+          .replace(/[\(\[].*?(official|video|audio|lyrics|letra|hd|hq|remastered|vivo).*?[\)\]]/gi, '')
+          .replace(/(official music video|official video|lyrics|letra|en vivo)/gi, '');
+        
+        let artist = data.author_name || '';
+        if(cleanTitle.includes('-')){
+          const parts = cleanTitle.split('-');
+          artist = parts[0].trim();
+          cleanTitle = parts.slice(1).join('-').trim();
+        }
+        
+        $('new-title').value = cleanTitle.trim();
+        $('new-artist').value = artist.trim();
+        
+        // Armar enlace de búsqueda directa en Cifra Club o web
+        const searchQuery = (cleanTitle + ' ' + artist).toLowerCase().replace(/\s+/g, '-');
+        targetURL = 'https://www.cifraclub.com.br/' + encodeURIComponent(searchQuery);
+      } else {
+        alert('No se pudo leer el título del video.');
+        return;
+      }
+    }
+    
+    // Descargar y extraer letra y acordes mediante proxy CORS
+    alert('📥 Descargando letra y acordes...');
+    const proxy='https://api.allorigins.win/raw?url='+encodeURIComponent(targetURL);
+    const resPage=await fetch(proxy);
+    const html=await resPage.text();
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    
+    let title=doc.querySelector('h1')?.innerText||'';
+    let artist='';
+    let lyricsText='';
+    
+    if(targetURL.includes('cifraclub')){
+      artist=doc.querySelector('.head-info-artist')?.innerText||'';
+      const box=doc.querySelector('.cnt-g')||doc.querySelector('pre');
+      if(box)lyricsText=box.innerText;
+    }else if(targetURL.includes('lacuerda')){
+      artist=doc.querySelector('.partit h2')?.innerText||'';
+      const box=doc.querySelector('pre');
+      if(box)lyricsText=box.innerText;
+    }else{
+      const pre=doc.querySelector('pre');
+      if(pre)lyricsText=pre.innerText;
+    }
+    
+    if(lyricsText){
+      if(title && !$('new-title').value) $('new-title').value = title.split('-')[0].trim();
+      if(artist && !$('new-artist').value) $('new-artist').value = artist.trim();
+      $('new-lyrics').value=convertChordSheet(lyricsText);
+      const det=detectKeyFromLyrics($('new-lyrics').value);
+      if(det&&KEYS.includes(det))$('new-key').value=det;
+      alert('¡Letra y acordes cargados automáticamente con éxito! ✨');
+    } else {
+      alert('Se obtuvo la info, pero no se halló la cifra exacta. Usa los botones de búsqueda web.');
+    }
+  }catch(e){
+    alert('No se pudo extraer automáticamente. Usa los botones de búsqueda web o pégalo manual.');
+  }
 }
 
 /* Biblioteca & Tags */
@@ -554,7 +648,7 @@ function exportData(){
   const a=document.createElement('a');a.href=url;a.download='gigflow_backup.json';a.click();
 }
 
-/* Buscador Web compatible con APK / PWA */
+/* Buscador Web */
 function webSearch(site){
   const title = $('new-title').value.trim();
   const artist = $('new-artist').value.trim();
@@ -562,8 +656,6 @@ function webSearch(site){
   if(!q.trim()){alert('Escribe el título y artista primero.');return;}
   const domain = site === 'cifraclub' ? 'cifraclub.com' : 'lacuerda.net';
   const searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(q + ' acordes site:' + domain);
-  
-  // Forzar apertura en navegador externo (soluciona bloqueo en modo APK/PWA)
   const a = document.createElement('a');
   a.href = searchUrl;
   a.target = '_blank';
@@ -573,14 +665,23 @@ function webSearch(site){
   document.body.removeChild(a);
 }
 
-/* Afinador con Micrófono */
+/* AFINADOR SEGURO CON SELECCIÓN DE CUERDAS */
 let audioContext=null,analyser=null,micStream=null,tunerRAF=null,lastPitchT=0;
+let targetFreq=329.63;
+
+function selectString(freq, name, btn){
+  targetFreq = freq;
+  document.querySelectorAll('.str-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  $('hz-display').textContent = `Objetivo: ${freq} Hz (${name})`;
+}
+
 function toggleTuner(){micStream?stopTuner():startTuner()}
 async function startTuner(){
   try{
     audioContext=new(window.AudioContext||window.webkitAudioContext)();
     micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
-    analyser=audioContext.createAnalyser();analyser.fftSize=2048;
+    analyser=audioContext.createAnalyser();analyser.fftSize=4096;
     audioContext.createMediaStreamSource(micStream).connect(analyser);
     $('tuner-btn').textContent='Detener micrófono';detectPitch(0);
   }catch(e){stopTuner();alert('Permiso de micrófono denegado.')}
@@ -590,26 +691,29 @@ function stopTuner(){
   if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}
   if(audioContext){audioContext.close().catch(()=>{});audioContext=null}
   analyser=null;
-  if($('tuner-btn')){$('tuner-btn').textContent='Activar micrófono';$('note-display').textContent='–';$('hz-display').textContent='0.0 Hz';$('cents-display').textContent='Toca una cuerda';$('needle').style.left='50%';$('tuner-box').classList.remove('ok')}
+  if($('tuner-btn')){$('tuner-btn').textContent='Activar micrófono';$('note-display').textContent='E';$('hz-display').textContent='Selecciona una cuerda';$('cents-display').textContent='Toca una cuerda';$('needle').style.left='50%';$('tuner-box').classList.remove('ok')}
 }
 function detectPitch(t){
   if(!analyser)return;
   tunerRAF=requestAnimationFrame(detectPitch);
-  if(t-lastPitchT<80)return;lastPitchT=t;
+  if(t-lastPitchT<60)return;lastPitchT=t;
   const buf=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(buf);
   const f=autoCorrelate(buf,audioContext.sampleRate);if(f===-1)return;
   const ex=12*Math.log2(f/440)+69,midi=Math.round(ex),cents=Math.round((ex-midi)*100);
+  
   $('note-display').textContent=NOTES[((midi%12)+12)%12];
-  $('hz-display').textContent=f.toFixed(1)+' Hz';
+  $('hz-display').textContent=f.toFixed(1)+' Hz (Objetivo aprox)';
   $('needle').style.left=(50+Math.max(-50,Math.min(50,cents)))+'%';
-  $('cents-display').textContent=Math.abs(cents)<=5?'Afinada':(cents>0?`Sostenida +${cents} cents`:`Bemol ${cents} cents`);
+  
+  let msg = Math.abs(cents)<=5 ? '¡Afinada perfecta!' : (cents>0 ? `⚠️ Sostenida +${cents}¢ (¡Bájale un poco para no romper!)` : `Bemol ${cents}¢ (Súbela con cuidado)`);
+  $('cents-display').textContent=msg;
   $('tuner-box').classList.toggle('ok',Math.abs(cents)<=5);
 }
 function autoCorrelate(buffer,sr){
   let SIZE=buffer.length,sum=0;
   for(let i=0;i<SIZE;i++)sum+=buffer[i]*buffer[i];
-  if(Math.sqrt(sum/SIZE)<0.01)return -1;
-  let r1=0,r2=SIZE-1;const th=.2;
+  if(Math.sqrt(sum/SIZE)<0.005)return -1;
+  let r1=0,r2=SIZE-1;const th=.15;
   for(let i=0;i<SIZE/2;i++)if(Math.abs(buffer[i])<th){r1=i;break}
   for(let i=1;i<SIZE/2;i++)if(Math.abs(buffer[SIZE-i])<th){r2=SIZE-i;break}
   const buf=buffer.slice(r1,r2);SIZE=buf.length;if(SIZE<64)return -1;
@@ -620,7 +724,7 @@ function autoCorrelate(buffer,sr){
   if(mp<1||mp>=SIZE-1)return -1;
   const x1=c[mp-1],x2=c[mp],x3=c[mp+1],a=(x1+x3-2*x2)/2,b=(x3-x1)/2;
   const f=sr/(a?mp-b/(2*a):mp);
-  return(f>60&&f<1400)?f:-1;
+  return(f>70&&f<1500)?f:-1;
 }
 
 /* Auto-scroll */
@@ -673,7 +777,7 @@ function stopFaceTracking(){
 /* Modal guardar */
 function openModal(){
   editingId=null;$('modal-title').textContent='Nueva canción';
-  ['new-title','new-artist','new-tags','new-lyrics','new-cheat'].forEach(i=>$(i).value='');
+  ['new-title','new-artist','new-tags','new-url','new-lyrics','new-cheat'].forEach(i=>$(i).value='');
   $('new-key').value='C';$('song-modal').classList.remove('hidden');
 }
 function closeModal(){$('song-modal').classList.add('hidden');editingId=null}
