@@ -250,7 +250,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <input id="new-title" placeholder="Título">
     <input id="new-artist" placeholder="Artista">
     <input id="new-tags" placeholder="Tags (ej: #acústico, #rock)">
-    <div class="lk"><button onclick="searchWeb('cifraclub')">Buscar Cifra Club</button><button onclick="searchWeb('lacuerda')">Buscar La Cuerda</button></div>
+    <div class="lk"><button onclick="webSearch('cifraclub')">Buscar Cifra Club</button><button onclick="webSearch('lacuerda')">Buscar La Cuerda</button></div>
     <select id="new-key"></select>
     <textarea id="new-lyrics" rows="7" placeholder="Pega aquí la cifra"></textarea>
     <div class="lk"><button onclick="convertPasted()">✨ Formatear Cifra</button><button onclick="smartAIAutoDetect()">🤖 IA Tono</button></div>
@@ -286,7 +286,6 @@ const noteIdx=n=>NOTES.indexOf(FLATS[n]||n);
 const isMinorKey=k=>/m$/.test(k);
 const keyRoot=k=>k.replace(/m$/,'');
 
-// Reglas de armadura: define si una tonalidad prefiere bemoles según el Círculo de Quintas
 const useFlats=k=>{
   const r=keyRoot(k);
   return isMinorKey(k)?['D','G','C','F','A#','D#'].includes(r):['F','A#','D#','G#','C#','Gb'].includes(r);
@@ -295,7 +294,6 @@ const useFlats=k=>{
 const getNoteName=(i,useFlat)=>(useFlat?FLAT_NOTES:NOTES)[((i%12)+12)%12];
 const showKey=k=>getNoteName(noteIdx(keyRoot(k)),useFlats(k))+(isMinorKey(k)?'m':'');
 
-// Transposición matemática avanzada respetando acordes de barra y extensiones
 function transposeChord(ch,semitones,useFlat){
   return ch.split('/').map(part=>{
     const m=part.match(/^([A-G][#b]?)(.*)$/);
@@ -556,6 +554,25 @@ function exportData(){
   const a=document.createElement('a');a.href=url;a.download='gigflow_backup.json';a.click();
 }
 
+/* Buscador Web compatible con APK / PWA */
+function webSearch(site){
+  const title = $('new-title').value.trim();
+  const artist = $('new-artist').value.trim();
+  const q = title + ' ' + artist;
+  if(!q.trim()){alert('Escribe el título y artista primero.');return;}
+  const domain = site === 'cifraclub' ? 'cifraclub.com' : 'lacuerda.net';
+  const searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(q + ' acordes site:' + domain);
+  
+  // Forzar apertura en navegador externo (soluciona bloqueo en modo APK/PWA)
+  const a = document.createElement('a');
+  a.href = searchUrl;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 /* Afinador con Micrófono */
 let audioContext=null,analyser=null,micStream=null,tunerRAF=null,lastPitchT=0;
 function toggleTuner(){micStream?stopTuner():startTuner()}
@@ -677,10 +694,6 @@ function convertPasted(){
 function smartAIAutoDetect(){
   convertPasted();const det=detectKeyFromLyrics($('new-lyrics').value);
   $('new-key').value=det;alert(`🤖 Tono detectado: ${det}`);
-}
-function webSearch(site){
-  const q=$('new-title').value+' '+$('new-artist').value;if(!q.trim()){alert('Escribe título y artista.');return}
-  window.open('https://www.google.com/search?q='+encodeURIComponent(q+' acordes site:'+(site==='cifraclub'?'cifraclub.com':'lacuerda.net')),'_blank');
 }
 function exportSetlistPDF(){
   const rows=setlist.map((id,i)=>{const s=songs.find(x=>x.id===id);return s?`<li><b>${i+1}. ${esc(s.title)}</b> — ${esc(s.artist)} [${esc(s.key)}]${s.tags?' <small>('+esc(s.tags)+')</small>':''}</li>`:''}).join('');
