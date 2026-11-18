@@ -59,7 +59,7 @@ h1{font-size:2rem;font-weight:800;letter-spacing:-.03em}
 .tabs button.on{color:var(--tx)}
 .tabs button.on svg{stroke:var(--ac)}
 
-/* Afinador Seguro con Guía de Cuerdas */
+/* Afinador Seguro con Bloqueo de Cuerda */
 #tuner-view{text-align:center;padding-top:24px}
 .string-guide{display:flex;justify-content:center;gap:6px;margin-bottom:14px;flex-wrap:wrap}
 .str-btn{background:var(--s1);border:1px solid var(--line);padding:6px 10px;border-radius:10px;font-size:.75rem;font-weight:bold;color:var(--mu);cursor:pointer}
@@ -85,6 +85,12 @@ h1{font-size:2rem;font-weight:800;letter-spacing:-.03em}
 .kv{text-align:center;min-width:80px}
 .kv small{display:block;font-size:.65rem;color:var(--mu);font-weight:600}
 .kv b{font-size:1.5rem;font-weight:800}
+
+/* Barra de Navegación Rápida por Secciones */
+.section-nav{display:flex;gap:6px;padding:6px 14px;overflow-x:auto;background:var(--s1);border-top:1px solid var(--line);border-bottom:1px solid var(--line);max-width:520px;width:100%;margin:0 auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+.sec-pill{background:var(--s2);color:var(--ac);border:1px solid var(--line);padding:5px 12px;border-radius:12px;font-size:.75rem;font-weight:700;cursor:pointer}
+.sec-pill:active{background:var(--ac);color:#fff}
+
 .cheat{margin:0 14px 6px;padding:8px 12px;border-radius:12px;background:rgba(251,191,36,.12);color:var(--root);font-size:.8rem;max-width:520px;align-self:center;width:calc(100% - 28px)}
 #lyrics-container{flex:1;overflow-y:auto;padding:14px 20px 30px;max-width:520px;width:100%;margin:0 auto;line-height:1.35;-webkit-overflow-scrolling:touch}
 .ln{display:flex;flex-wrap:wrap;align-items:flex-end;min-height:1.4em;margin-bottom:10px}
@@ -196,6 +202,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <div class="kv"><small>TONO</small><b id="key-label">C</b></div>
     <button onclick="shiftKey(1)" aria-label="Subir tono">+</button>
   </div>
+  
+  <!-- Barra de Acceso Rápido a Secciones -->
+  <div class="section-nav" id="section-nav-bar"></div>
+
   <div class="cheat hidden" id="cheat-notes-box">💡 <span id="cheat-text"></span></div>
   <div id="lyrics-container"></div>
   
@@ -254,7 +264,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 <video id="webcam-video" autoplay playsinline muted></video>
 
-<!-- MODAL CREAR/EDITAR CON IMPORTADOR MÁGICO -->
+<!-- MODAL CREAR/EDITAR CON IMPORTADOR DE ENLACE -->
 <div id="song-modal" class="modal hidden" onclick="if(event.target===this)closeModal()">
   <div class="mc">
     <h3 id="modal-title">Nueva canción</h3>
@@ -262,7 +272,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <input id="new-artist" placeholder="Artista">
     <input id="new-tags" placeholder="Tags (ej: #acústico, #rock)">
     
-    <!-- Importador Mágico de Enlaces -->
+    <!-- Importador Mágico -->
     <div style="background:var(--s2);padding:10px;border-radius:12px;margin-bottom:10px">
       <input id="new-url" placeholder="Pega enlace de YouTube, Cifra Club o La Cuerda" style="margin-bottom:6px">
       <button class="bt pr" onclick="importFromURL()" style="width:100%;padding:10px">✨ Cargar Letra y Acordes del Enlace</button>
@@ -377,17 +387,43 @@ function detectKeyFromLyrics(lyrics){
 }
 
 function renderLyrics(text){
-  return text.split('\n').map(line=>{
+  return text.split('\n').map((line, idx)=>{
     if(isTabLine(line))return `<div class="tab-line">${esc(line)}</div>`;
     const p=line.split(/\[(.*?)\]/);let out='';
     if(p[0])out+=`<span class="seg"><i class="c">&nbsp;</i><span class="t">${esc(p[0])}</span></span>`;
     for(let i=1;i<p.length;i+=2){
       const tok=p[i];
-      if(CH.test(tok)){out+=`<span class="seg"><i class="c" onclick="showChordDetail('${tok}')">${esc(tok)}</i><span class="t">${esc(p[i+1]||'')||'&nbsp;'}</span></span>`}
-      else{out+=`<div style="width:100%;color:var(--ac);font-weight:800;font-size:0.9rem;margin-top:10px;margin-bottom:4px;">[${esc(tok)}]</div>`}
+      if(CH.test(tok)){
+        out+=`<span class="seg"><i class="c" onclick="showChordDetail('${tok}')">${esc(tok)}</i><span class="t">${esc(p[i+1]||'')||'&nbsp;'}</span></span>`;
+      } else {
+        // Es una etiqueta de sección (Verso, Coro, etc.)
+        out+=`<div id="sec-${idx}" style="width:100%;color:var(--ac);font-weight:800;font-size:0.95rem;margin-top:14px;margin-bottom:4px;border-bottom:1px solid var(--line);padding-bottom:2px;">[${esc(tok)}]</div>`;
+      }
     }
     return `<div class="ln">${out||'&nbsp;'}</div>`;
   }).join('');
+}
+
+function renderSectionNav(text){
+  const nav=$('section-nav-bar');
+  const matches = [...text.matchAll(/\[(Intro|Verso|Estribillo|Coro|Puente|Tab|Final|Solo|Pre-Coro|Interludio.*?)\]/gi)];
+  if(!matches.length){nav.style.display='none';return;}
+  nav.style.display='flex';
+  nav.innerHTML = matches.map((m, idx)=>{
+    const tag = m[1];
+    // Buscar la línea correspondiente en el DOM renderizado
+    return `<button class="sec-pill" onclick="jumpToSection('${tag}')">${tag}</button>`;
+  }).join('');
+}
+
+function jumpToSection(tag){
+  const divs = document.querySelectorAll('#lyrics-container div');
+  for(let d of divs){
+    if(d.textContent.includes('[' + tag + ']')){
+      d.scrollIntoView({behavior: 'smooth', block: 'start'});
+      break;
+    }
+  }
 }
 
 function adjustZoom(d){
@@ -395,44 +431,33 @@ function adjustZoom(d){
   $('lyrics-container').style.fontSize = currentZoom + 'rem';
 }
 
-/* IMPORTADOR MÁGICO AUTOMÁTICO (YOUTUBE O WEB) */
+/* IMPORTADOR MÁGICO */
 async function importFromURL(){
   const url=$('new-url').value.trim();
   if(!url){alert('Pega un enlace válido.');return;}
   
   try{
     let targetURL = url;
-    
-    // Si es YouTube, extraemos el título y buscamos en Cifra Club automáticamente
     if(url.includes('youtube.com') || url.includes('youtu.be')){
-      alert('📺 Analizando video de YouTube y buscando acordes...');
+      alert('📺 Analizando video de YouTube...');
       const res = await fetch('https://noembed.com/embed?url=' + encodeURIComponent(url));
       const data = await res.json();
       if(data && data.title){
         let cleanTitle = data.title
           .replace(/[\(\[].*?(official|video|audio|lyrics|letra|hd|hq|remastered|vivo).*?[\)\]]/gi, '')
           .replace(/(official music video|official video|lyrics|letra|en vivo)/gi, '');
-        
         let artist = data.author_name || '';
         if(cleanTitle.includes('-')){
           const parts = cleanTitle.split('-');
           artist = parts[0].trim();
           cleanTitle = parts.slice(1).join('-').trim();
         }
-        
         $('new-title').value = cleanTitle.trim();
         $('new-artist').value = artist.trim();
-        
-        // Armar enlace de búsqueda directa en Cifra Club o web
-        const searchQuery = (cleanTitle + ' ' + artist).toLowerCase().replace(/\s+/g, '-');
-        targetURL = 'https://www.cifraclub.com.br/' + encodeURIComponent(searchQuery);
-      } else {
-        alert('No se pudo leer el título del video.');
-        return;
+        targetURL = 'https://www.cifraclub.com.br/' + encodeURIComponent((cleanTitle + ' ' + artist).toLowerCase().replace(/\s+/g, '-'));
       }
     }
     
-    // Descargar y extraer letra y acordes mediante proxy CORS
     alert('📥 Descargando letra y acordes...');
     const proxy='https://api.allorigins.win/raw?url='+encodeURIComponent(targetURL);
     const resPage=await fetch(proxy);
@@ -462,12 +487,12 @@ async function importFromURL(){
       $('new-lyrics').value=convertChordSheet(lyricsText);
       const det=detectKeyFromLyrics($('new-lyrics').value);
       if(det&&KEYS.includes(det))$('new-key').value=det;
-      alert('¡Letra y acordes cargados automáticamente con éxito! ✨');
+      alert('¡Letra y acordes cargados con éxito! ✨');
     } else {
-      alert('Se obtuvo la info, pero no se halló la cifra exacta. Usa los botones de búsqueda web.');
+      alert('Se obtuvo info, pero no la cifra exacta. Usa los botones de búsqueda web.');
     }
   }catch(e){
-    alert('No se pudo extraer automáticamente. Usa los botones de búsqueda web o pégalo manual.');
+    alert('No se pudo extraer automáticamente. Pégalo de forma manual.');
   }
 }
 
@@ -568,6 +593,7 @@ function updateSongView(){
   const transp=transposeLyrics(formatted,(sem-capo+12)%12, useFlatAcc);
   
   $('lyrics-container').innerHTML=renderLyrics(transp);
+  renderSectionNav(transp);
   renderFretboard(playKey);
   askAIAssistant();
   renderCapo();
